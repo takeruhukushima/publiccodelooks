@@ -13,7 +13,7 @@
     "postinstall": "npx update-browserslist-db@latest"
   },
   "engines": {
-    "node": "18.x"
+    "node": "20.x"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
