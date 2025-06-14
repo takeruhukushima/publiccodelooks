@@ -64,8 +64,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
     console.error('ProjectCard: invalid repository object', { repository });
     return <div className="text-red-500">リポジトリ情報が無効です</div>;
   }
-  const stargazers_count = repository?.stargazers_count || 0;
-  const forks_count = repository?.forks_count || 0;
+  const stargazers_count = Number(repository?.stargazers_count) || 0;
+  const forks_count = Number(repository?.forks_count) || 0;
   const { summary, isLoading } = useReadmeSummary(repository?.full_name || '');
   
   // デバッグ用に必須プロパティの存在を確認
@@ -107,10 +107,24 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg mb-1 line-clamp-2">
-              {nameJa}
+              <a 
+                href={repository.html_url || '#'} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-blue-600 transition-colors"
+              >
+                {nameJa}
+              </a>
             </CardTitle>
             <CardDescription className="text-sm text-slate-500">
-              {project.nameEn || 'No English name available'}
+              <a 
+                href={html_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-blue-600 transition-colors"
+              >
+                publiccode.yml
+              </a>
             </CardDescription>
             
             <div className="flex items-center gap-4 mt-1 text-sm text-slate-600">
@@ -123,9 +137,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                 <span className="font-medium">{forks_count.toLocaleString()}</span>
               </div>
             </div>
-          </div>
-          <div className="text-2xl ml-2">
-            {getCountryFlag(project.country)}
           </div>
         </div>
         
@@ -141,7 +152,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col">
-        <p className="text-slate-600 text-sm mb-4 line-clamp-3 flex-1">
+        <p className="text-slate-600 text-sm mb-4 line-clamp-5 flex-1">
           {isLoading ? (
             <div className="flex items-center text-slate-400">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -163,30 +174,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
                 +{categories.length - 3}
               </Badge>
             )}
-          </div>
-          
-          <div className="pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center">
-                <Calendar className="h-3 w-3 mr-1" />
-                <span>{lastUpdated} 更新</span>
-              </div>
-              <span>{country}</span>
-            </div>
-          </div>
-          
-          <div className="flex gap-2 pt-2">
-            <Button size="sm" className="flex-1" asChild>
-              <a href={url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3 w-3 mr-1" />
-                詳細を見る
-              </a>
-            </Button>
-            <Button size="sm" variant="outline" asChild>
-              <a href={repository.html_url || '#'} target="_blank" rel="noopener noreferrer">
-                コード
-              </a>
-            </Button>
           </div>
         </div>
       </CardContent>

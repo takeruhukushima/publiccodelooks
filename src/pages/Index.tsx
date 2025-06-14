@@ -99,14 +99,28 @@ const Index = () => {
             ...item,
             repository: {
               ...item.repository,
-              stargazers_count: repoDetails?.stargazers_count || 0,
-              forks_count: repoDetails?.forks_count || 0,
+              stargazers_count: Number(repoDetails?.stargazers_count) || 0,
+              forks_count: Number(repoDetails?.forks_count) || 0,
             },
           };
         })
       );
 
-      setProjects(itemsWithDetails);
+      // ソート処理を追加
+      const sortedItems = [...itemsWithDetails].sort((a, b) => {
+        if (sortBy === 'stars') {
+          return sortOrder === 'desc' 
+            ? b.repository.stargazers_count - a.repository.stargazers_count
+            : a.repository.stargazers_count - b.repository.stargazers_count;
+        } else if (sortBy === 'forks') {
+          return sortOrder === 'desc'
+            ? b.repository.forks_count - a.repository.forks_count
+            : a.repository.forks_count - b.repository.forks_count;
+        }
+        return 0;
+      });
+
+      setProjects(sortedItems);
       setTotalCount(data.total_count);
     } catch (err: any) {
       let errorMessage = 'データの取得中にエラーが発生しました';
@@ -279,8 +293,8 @@ const Index = () => {
               repository: {
                 ...project.repository,
                 full_name: project.repository.full_name,
-                stargazers_count: project.repository.stargazers_count || 0,
-                forks_count: project.repository.forks_count || 0,
+                stargazers_count: Number(project.repository.stargazers_count) || 0,
+                forks_count: Number(project.repository.forks_count) || 0,
                 html_url: project.repository.html_url
               },
               path: project.path,

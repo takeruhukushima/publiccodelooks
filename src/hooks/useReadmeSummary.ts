@@ -16,18 +16,53 @@ export const useReadmeSummary = (repoFullName?: string) => {
       setError(null);
       
       try {
-        // 1. GitHub APIからREADMEを取得
-        const readmeResponse = await fetch(
-          `https://raw.githubusercontent.com/${repoFullName}/main/README.md`
+        // 1. まずデフォルトブランチを取得
+        const repoResponse = await fetch(
+          `https://api.github.com/repos/${repoFullName}`
         );
         
+        if (!repoResponse.ok) {
+          throw new Error('リポジトリ情報の取得に失敗しました');
+        }
+        
+        const repoData = await repoResponse.json();
+        const defaultBranch = repoData.default_branch;
+        
+        // 2. GitHub APIからREADMEを取得（デフォルトブランチから）
+        let readmeResponse = await fetch(
+          `https://raw.githubusercontent.com/${repoFullName}/${defaultBranch}/README.md`
+        );
+        
+        // デフォルトブランチでREADMEが見つからない場合、mainとmasterを試す
         if (!readmeResponse.ok) {
+          const branches = ['main', 'master'];
+          for (const branch of branches) {
+            if (branch === defaultBranch) continue; // デフォルトブランチは既に試しているのでスキップ
+            
+            readmeResponse = await fetch(
+              `https://raw.githubusercontent.com/${repoFullName}/${branch}/README.md`
+            );
+            
+            if (readmeResponse.ok) break;
+          }
+        }
+        
+        if (!readmeResponse.ok) {
+          if (readmeResponse.status === 404) {
+            setSummary('READMEは存在しません');
+            return;
+          }
           throw new Error('READMEの取得に失敗しました');
         }
         
         const readmeText = await readmeResponse.text();
         
-        // 2. Geminiで要約
+        if (!readmeText.trim()) {
+          setSummary('READMEは空です');
+          return;
+        }
+        
+        // 3. Geminiで要約
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const prompt = `
           以下のGitHubリポジトリのREADMEを3行で日本語に要約してください。
