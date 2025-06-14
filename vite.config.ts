@@ -35,14 +35,14 @@ export default defineConfig(({ mode }) => {
   
   return {
     // ベースパスを修正
-    base: isProduction ? './' : '/',
+    base: '/',
     // 環境変数の設定
     define: {
       'import.meta.env.VITE_GITHUB_ACCESS_TOKEN': JSON.stringify(env.VITE_GITHUB_ACCESS_TOKEN || ''),
       'import.meta.env.MODE': JSON.stringify(mode),
       'import.meta.env.PROD': isProduction,
       'import.meta.env.DEV': !isProduction,
-      'import.meta.env.BASE_URL': JSON.stringify(isProduction ? './' : '/'),
+      'import.meta.env.BASE_URL': JSON.stringify('/'),
     },
     // ビルド設定
     build: {
