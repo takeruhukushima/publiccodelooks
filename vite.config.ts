@@ -74,8 +74,26 @@ export default defineConfig(({ mode }) => {
           // JavaScriptファイルのファイル名を設定
           chunkFileNames: 'assets/js/[name]-[hash].js',
           entryFileNames: 'assets/js/[name]-[hash].js',
+          // モジュール形式を設定
+          format: 'es',
+          // グローバル変数の設定
+          globals: {
+            react: 'React',
+            'react-dom': 'ReactDOM',
+            'react-router-dom': 'ReactRouterDOM'
+          }
         },
       },
+      // ビルドの最適化設定
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true
+        }
+      },
+      // チャンクサイズの警告を無効化
+      chunkSizeWarningLimit: 1000
     },
     server: {
       host: "::",
@@ -128,3 +146,4 @@ export default defineConfig(({ mode }) => {
     envPrefix: 'VITE_',
   };
 });
+
