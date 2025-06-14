@@ -3,9 +3,10 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node",
+      "use": "@vercel/static-build",
       "config": {
-        "installCommand": "npm install",
+        "distDir": "dist",
+        "installCommand": "npm install --no-package-lock",
         "buildCommand": "npm run build",
         "nodeVersion": "20.x"
       }

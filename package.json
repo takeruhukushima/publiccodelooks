@@ -9,8 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "vercel-build": "npm install && npx update-browserslist-db@latest && npm run build",
-    "postinstall": "npx update-browserslist-db@latest"
+    "vercel-build": "npm install --no-package-lock && npm run build",
+    "postinstall": "npm install caniuse-lite@latest --no-package-lock"
   },
   "engines": {
     "node": "20.x"
