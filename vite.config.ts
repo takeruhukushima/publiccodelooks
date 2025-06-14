@@ -24,12 +24,36 @@ export default defineConfig(({ mode }) => {
     console.warn('GitHub token is not set. Please set VITE_GITHUB_ACCESS_TOKEN in your .env file.');
   }
   
+  // 環境変数をログに出力（デバッグ用）
+  console.log('Environment variables:', {
+    mode,
+    nodeEnv: process.env.NODE_ENV,
+    hasToken: !!env.VITE_GITHUB_ACCESS_TOKEN || !!env.VITE_PUBLIC_GITHUB_ACCESS_TOKEN,
+  });
+
   return {
-    // Vercelでのデプロイ用にベースパスを設定
-    base: process.env.NODE_ENV === 'production' ? '/' : '/',
-    // Vercel デプロイ用の設定
+    // ベースパスを修正
+    base: '/',
+    // 環境変数の設定
     define: {
-      'process.env': {}
+      'import.meta.env.VITE_GITHUB_ACCESS_TOKEN': JSON.stringify(env.VITE_GITHUB_ACCESS_TOKEN || ''),
+      'import.meta.env.MODE': JSON.stringify(mode),
+      'import.meta.env.PROD': mode === 'production',
+      'import.meta.env.DEV': mode !== 'production',
+    },
+    // ビルド設定
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      emptyOutDir: true,
+      sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+          },
+        },
+      },
     },
     server: {
       host: "::",
