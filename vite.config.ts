@@ -27,6 +27,10 @@ export default defineConfig(({ mode }) => {
   return {
     // Vercelでのデプロイ用にベースパスを設定
     base: process.env.NODE_ENV === 'production' ? '/' : '/',
+    // Vercel デプロイ用の設定
+    define: {
+      'process.env': {}
+    },
     server: {
       host: "::",
       port: 8080,
