@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { ExternalLink, Calendar, Users, Tag } from 'lucide-react';
+import { ExternalLink, Calendar, Users, Tag, Globe, Code, Star, GitFork } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,15 @@ interface Project {
   lastModified: string;
   url: string;
   repositoryUrl: string;
+  repository: {
+    full_name: string;
+    html_url: string;
+    stargazers_count: number;
+    forks_count: number;
+  };
+  path: string;
+  html_url: string;
+  updated_at: string;
 }
 
 interface ProjectCardProps {
@@ -25,6 +33,13 @@ interface ProjectCardProps {
 }
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
+  const { repository, path, html_url, updated_at } = project;
+  const lastUpdated = new Date(updated_at).toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'stable': return 'bg-green-100 text-green-800';
@@ -97,9 +112,20 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="flex items-center">
               <Calendar className="h-3 w-3 mr-1" />
-              {project.lastModified}
+              {lastUpdated}
             </span>
             <span>{project.country}</span>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm text-slate-600">
+            <div className="flex items-center gap-1">
+              <Star className="h-4 w-4 text-yellow-500" />
+              <span>{repository.stargazers_count.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <GitFork className="h-4 w-4 text-slate-500" />
+              <span>{repository.forks_count.toLocaleString()}</span>
+            </div>
           </div>
           
           <div className="flex gap-2 pt-2">

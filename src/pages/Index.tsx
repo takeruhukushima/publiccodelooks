@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Globe, Code, Calendar, ExternalLink } from 'lucide-react';
+import { Search, Filter, Globe, Code, Calendar, ExternalLink, Star, GitFork } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,7 +26,38 @@ const Index = () => {
   const [projects, setProjects] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [sortBy, setSortBy] = useState<'stars' | 'forks' | 'indexed'>('indexed');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // リポジトリの詳細情報を取得する関数
+  const fetchRepoDetails = async (repoFullName: string) => {
+    try {
+      const repoUrl = new URL(`/api/repos/${repoFullName}`, window.location.origin);
+      const response = await fetch(repoUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'User-Agent': 'publicode-search-app',
+        },
+        cache: 'no-store' as RequestCache,
+      });
+
+      if (!response.ok) {
+        console.error(`Failed to fetch repo details for ${repoFullName}`);
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching repo details for ${repoFullName}:`, error);
+      return null;
+    }
+  };
+
+  // 全ページ分のデータを取得
   useEffect(() => {
     const fetchAllPages = async () => {
       setIsLoading(true);
@@ -41,8 +72,8 @@ const Index = () => {
             q: 'filename:publiccode.yml in:path',
             per_page: '100',
             page: page.toString(),
-            sort: 'indexed',
-            order: 'desc',
+            sort: sortBy,
+            order: sortOrder,
           });
           apiUrl.search = params.toString();
           const response = await fetch(apiUrl.toString(), {
@@ -65,7 +96,23 @@ const Index = () => {
             setTotalCount(total);
           }
           if (!data.items || data.items.length === 0) break;
-          allItems = allItems.concat(data.items);
+
+          // 各リポジトリの詳細情報を取得
+          const itemsWithDetails = await Promise.all(
+            data.items.map(async (item: any) => {
+              const repoDetails = await fetchRepoDetails(item.repository.full_name);
+              return {
+                ...item,
+                repository: {
+                  ...item.repository,
+                  stargazers_count: repoDetails?.stargazers_count || 0,
+                  forks_count: repoDetails?.forks_count || 0,
+                },
+              };
+            })
+          );
+
+          allItems = allItems.concat(itemsWithDetails);
           if (data.items.length < 100) break; // 最後のページ
           page++;
         }
@@ -80,7 +127,7 @@ const Index = () => {
       }
     };
     fetchAllPages();
-  }, []);
+  }, [sortBy, sortOrder]);
 
   const filteredProjects = projects.filter(project =>
     project.repository.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -171,6 +218,38 @@ const Index = () => {
                 }}
                 className="pl-10"
               />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={sortBy === 'stars' ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (sortBy === 'stars') {
+                    setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                  } else {
+                    setSortBy('stars');
+                    setSortOrder('desc');
+                  }
+                }}
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Stars
+              </Button>
+              <Button
+                variant={sortBy === 'forks' ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (sortBy === 'forks') {
+                    setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc');
+                  } else {
+                    setSortBy('forks');
+                    setSortOrder('desc');
+                  }
+                }}
+              >
+                <GitFork className="h-4 w-4 mr-2" />
+                Forks
+              </Button>
             </div>
           </div>
         </div>
