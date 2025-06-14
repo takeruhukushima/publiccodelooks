@@ -31,15 +31,18 @@ export default defineConfig(({ mode }) => {
     hasToken: !!env.VITE_GITHUB_ACCESS_TOKEN || !!env.VITE_PUBLIC_GITHUB_ACCESS_TOKEN,
   });
 
+  const isProduction = mode === 'production';
+  
   return {
     // ベースパスを修正
-    base: '/',
+    base: isProduction ? './' : '/',
     // 環境変数の設定
     define: {
       'import.meta.env.VITE_GITHUB_ACCESS_TOKEN': JSON.stringify(env.VITE_GITHUB_ACCESS_TOKEN || ''),
       'import.meta.env.MODE': JSON.stringify(mode),
-      'import.meta.env.PROD': mode === 'production',
-      'import.meta.env.DEV': mode !== 'production',
+      'import.meta.env.PROD': isProduction,
+      'import.meta.env.DEV': !isProduction,
+      'import.meta.env.BASE_URL': JSON.stringify(isProduction ? './' : '/'),
     },
     // ビルド設定
     build: {
