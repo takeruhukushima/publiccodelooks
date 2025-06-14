@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
           chunkFileNames: 'assets/js/[name]-[hash].js',
           entryFileNames: 'assets/js/[name]-[hash].js',
           // モジュール形式を設定
-          format: 'es',
+          format: 'esm',
           // グローバル変数の設定
           globals: {
             react: 'React',
@@ -93,7 +93,13 @@ export default defineConfig(({ mode }) => {
         }
       },
       // チャンクサイズの警告を無効化
-      chunkSizeWarningLimit: 1000
+      chunkSizeWarningLimit: 1000,
+      // モジュールの出力形式を設定
+      target: 'esnext',
+      // モジュールの解決方法を設定
+      modulePreload: {
+        polyfill: true
+      }
     },
     server: {
       host: "::",
