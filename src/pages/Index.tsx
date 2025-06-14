@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Globe, Code, Calendar, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,151 +7,90 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import ProjectCard from '@/components/ProjectCard';
 import Header from '@/components/Header';
-import { mockProjects } from '@/data/mockData';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
+
+const ITEMS_PER_PAGE = 27;
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    const fetchPubliccode = async () => {
+    const fetchAllPages = async () => {
       setIsLoading(true);
       setError(null);
-      
       try {
-        console.log('Searching for publiccode.yml files on GitHub...');
-        
-        // GitHub API の検索エンドポイント
-        const apiUrl = new URL('/api/search/code', window.location.origin);
-        
-        // 検索クエリパラメータ
-        const params = new URLSearchParams({
-          q: 'filename:publiccode.yml in:path',
-          per_page: '10',
-          sort: 'indexed',
-          order: 'desc'
-        });
-        
-        apiUrl.search = params.toString();
-        
-        console.log('GitHub API URL:', apiUrl.toString());
-        
-        // デバッグ用に環境変数が読み込まれているか確認
-        console.log('Environment variables in client:', {
-          hasToken: !!import.meta.env.VITE_GITHUB_ACCESS_TOKEN,
-          tokenPrefix: import.meta.env.VITE_GITHUB_ACCESS_TOKEN ? 
-            `${import.meta.env.VITE_GITHUB_ACCESS_TOKEN.substring(0, 4)}...${import.meta.env.VITE_GITHUB_ACCESS_TOKEN.slice(-4)}` : 
-            'No token',
-          env: import.meta.env.MODE
-        });
-        
-        // プロキシ経由でGitHub APIを呼び出す
-        const response = await fetch(apiUrl.toString(), {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'User-Agent': 'publicode-search-app'
-          },
-          // credentials: 'omit',  // クロスオリジンリクエストでは不要
-          cache: 'no-store' as RequestCache
-        });
-        
-        // レスポンスヘッダーを確認
-        console.log('Response status:', response.status);
-        console.log('Response headers:');
-        response.headers.forEach((value, key) => {
-          console.log(`  ${key}: ${value}`);
-        });
-        
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-        
-        // レートリミット情報をログに出力
-        const rateLimitRemaining = response.headers.get('x-ratelimit-remaining');
-        const rateLimitLimit = response.headers.get('x-ratelimit-limit');
-        const rateLimitReset = response.headers.get('x-ratelimit-reset');
-        
-        console.log(`GitHub API Rate Limit: ${rateLimitRemaining}/${rateLimitLimit} (resets at ${rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000).toISOString() : 'unknown'})`);
-        
-        // レスポンスをJSONとしてパース
-        const data = await response.json();
-        console.log('GitHub API response:', data);
-        
-        if (!response.ok) {
-          console.error('GitHub API Error:', data);
-          const errorMessage = data?.message || `HTTP error! status: ${response.status}`;
-          throw new Error(errorMessage);
+        let allItems: any[] = [];
+        let page = 1;
+        let total = 0;
+        while (true) {
+          const apiUrl = new URL('/api/search/code', window.location.origin);
+          const params = new URLSearchParams({
+            q: 'filename:publiccode.yml in:path',
+            per_page: '100',
+            page: page.toString(),
+            sort: 'indexed',
+            order: 'desc',
+          });
+          apiUrl.search = params.toString();
+          const response = await fetch(apiUrl.toString(), {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+              'User-Agent': 'publicode-search-app',
+            },
+            cache: 'no-store' as RequestCache,
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data?.message || `HTTP error! status: ${response.status}`);
+          }
+          if (page === 1) {
+            total = data.total_count;
+            setTotalCount(total);
+          }
+          if (!data.items || data.items.length === 0) break;
+          allItems = allItems.concat(data.items);
+          if (data.items.length < 100) break; // 最後のページ
+          page++;
         }
-        
-        // 結果が空の場合の処理
-        if (!data.items || data.items.length === 0) {
-          console.log('No publiccode.yml files found');
-          setProjects([]);
-          setError('publiccode.yml ファイルが見つかりませんでした');
-          return;
-        }
-        
-        // 結果を整形
-        const results = data.items.map((item: any) => ({
-          name: item.name,
-          path: item.path,
-          html_url: item.html_url,
-          repository: {
-            full_name: item.repository?.full_name || 'unknown',
-            html_url: item.repository?.html_url || '#',
-          },
-          score: item.score,
-          content: null
-        }));
-        
-        console.log(`Found ${results.length} results`);
-        setProjects(results);
-        
+        setProjects(allItems);
       } catch (err: any) {
-        console.error('検索エラー:', err);
-        
-        // エラーメッセージを整形
         let errorMessage = 'データの取得中にエラーが発生しました';
-        
-        if (err.message) {
-          errorMessage = err.message;
-        } else if (typeof err === 'string') {
-          errorMessage = err;
-        } else if (err instanceof Error) {
-          errorMessage = err.message;
-        }
-        
-        // 認証エラーの場合
-        if (errorMessage.includes('Bad credentials') || errorMessage.includes('401')) {
-          errorMessage = 'GitHub認証エラーが発生しました。アクセストークンが正しく設定されているか確認してください。';
-        }
-        // レートリミットエラーの場合
-        else if (errorMessage.includes('API rate limit exceeded') || errorMessage.includes('403')) {
-          errorMessage = 'GitHub APIのレート制限に達しました。しばらく待ってから再度お試しください。';
-        }
-        // ネットワークエラーの場合
-        else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
-          errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-        }
-        
+        if (err.message) errorMessage = err.message;
         setError(errorMessage);
         setProjects([]);
       } finally {
         setIsLoading(false);
-      }  
+      }
     };
-
-    fetchPubliccode();
+    fetchAllPages();
   }, []);
 
-  const filteredProjects = projects.filter(project => 
+  const filteredProjects = projects.filter(project =>
     project.repository.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     project.path.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const pageCount = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
   const countries = Array.from(new Set(projects.map((p: any) => {
@@ -221,13 +159,16 @@ const Index = () => {
 
         {/* Search and Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
                 placeholder="リポジトリ名で検索..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="pl-10"
               />
             </div>
@@ -237,8 +178,8 @@ const Index = () => {
         {/* Loading and Error States */}
         {isLoading && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-            <p className="mt-2 text-slate-600">検索中...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-slate-600">データを読み込み中...</p>
           </div>
         )}
 
@@ -250,7 +191,7 @@ const Index = () => {
 
         {/* Results */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project, index) => (
+          {paginatedProjects.map((project, index) => (
             <Card key={index} className="h-full flex flex-col hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle className="text-lg truncate">
@@ -294,10 +235,66 @@ const Index = () => {
           ))}
         </div>
 
-        {!isLoading && filteredProjects.length === 0 && (
+        {!isLoading && paginatedProjects.length === 0 && (
           <div className="text-center py-12">
             <p className="text-slate-500">一致するプロジェクトが見つかりませんでした</p>
           </div>
+        )}
+
+        {/* Pagination */}
+        {pageCount > 1 && (
+          <Pagination className="mt-8">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={e => {
+                    e.preventDefault();
+                    setCurrentPage(p => Math.max(1, p - 1));
+                  }}
+                  aria-disabled={currentPage === 1}
+                />
+              </PaginationItem>
+              {Array.from({ length: Math.min(5, pageCount) }).map((_, i) => {
+                // 現在のページを中心に表示するページ番号を計算
+                let pageNum;
+                if (pageCount <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= pageCount - 2) {
+                  pageNum = pageCount - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      href="#"
+                      isActive={currentPage === pageNum}
+                      onClick={e => {
+                        e.preventDefault();
+                        setCurrentPage(pageNum);
+                      }}
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={e => {
+                    e.preventDefault();
+                    setCurrentPage(p => Math.min(pageCount, p + 1));
+                  }}
+                  aria-disabled={currentPage === pageCount}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         )}
       </main>
     </div>
