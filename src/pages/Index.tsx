@@ -28,6 +28,7 @@ const Index = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [sortBy, setSortBy] = useState<'stars' | 'forks' | 'indexed'>('indexed');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // リポジトリの詳細情報を取得する関数
   const fetchRepoDetails = async (repoFullName: string) => {
@@ -50,95 +51,86 @@ const Index = () => {
         return null;
       }
 
-      return await response.json();
+      const data = await response.json();
+      return {
+        stargazers_count: data.stargazers_count || 0,
+        forks_count: data.forks_count || 0,
+      };
     } catch (error) {
       console.error(`Error fetching repo details for ${repoFullName}:`, error);
       return null;
     }
   };
 
-  // 全ページ分のデータを取得
-  useEffect(() => {
-    const fetchAllPages = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        let allItems: any[] = [];
-        let page = 1;
-        let total = 0;
-        while (true) {
-          const apiUrl = new URL('/api/search/code', window.location.origin);
-          const params = new URLSearchParams({
-            q: 'filename:publiccode.yml in:path',
-            per_page: '100',
-            page: page.toString(),
-            sort: sortBy,
-            order: sortOrder,
-          });
-          apiUrl.search = params.toString();
-          const response = await fetch(apiUrl.toString(), {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/vnd.github.v3+json',
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-              'User-Agent': 'publicode-search-app',
-            },
-            cache: 'no-store' as RequestCache,
-          });
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data?.message || `HTTP error! status: ${response.status}`);
-          }
-          if (page === 1) {
-            total = data.total_count;
-            setTotalCount(total);
-          }
-          if (!data.items || data.items.length === 0) break;
-
-          // 各リポジトリの詳細情報を取得
-          const itemsWithDetails = await Promise.all(
-            data.items.map(async (item: any) => {
-              const repoDetails = await fetchRepoDetails(item.repository.full_name);
-              return {
-                ...item,
-                repository: {
-                  ...item.repository,
-                  stargazers_count: repoDetails?.stargazers_count || 0,
-                  forks_count: repoDetails?.forks_count || 0,
-                },
-              };
-            })
-          );
-
-          allItems = allItems.concat(itemsWithDetails);
-          if (data.items.length < 100) break; // 最後のページ
-          page++;
-        }
-        setProjects(allItems);
-      } catch (err: any) {
-        let errorMessage = 'データの取得中にエラーが発生しました';
-        if (err.message) errorMessage = err.message;
-        setError(errorMessage);
-        setProjects([]);
-      } finally {
-        setIsLoading(false);
+  // 現在のページのデータを取得
+  const fetchCurrentPage = async (page: number) => {
+    setIsLoadingMore(true);
+    try {
+      const apiUrl = new URL('/api/search/code', window.location.origin);
+      const params = new URLSearchParams({
+        q: 'filename:publiccode.yml in:path',
+        per_page: ITEMS_PER_PAGE.toString(),
+        page: page.toString(),
+        sort: sortBy,
+        order: sortOrder,
+      });
+      apiUrl.search = params.toString();
+      const response = await fetch(apiUrl.toString(), {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'User-Agent': 'publicode-search-app',
+        },
+        cache: 'no-store' as RequestCache,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || `HTTP error! status: ${response.status}`);
       }
-    };
-    fetchAllPages();
-  }, [sortBy, sortOrder]);
 
+      // リポジトリ詳細情報を並列で取得
+      const itemsWithDetails = await Promise.all(
+        data.items.map(async (item: any) => {
+          const repoDetails = await fetchRepoDetails(item.repository.full_name);
+          return {
+            ...item,
+            repository: {
+              ...item.repository,
+              stargazers_count: repoDetails?.stargazers_count || 0,
+              forks_count: repoDetails?.forks_count || 0,
+            },
+          };
+        })
+      );
+
+      setProjects(itemsWithDetails);
+      setTotalCount(data.total_count);
+    } catch (err: any) {
+      let errorMessage = 'データの取得中にエラーが発生しました';
+      if (err.message) errorMessage = err.message;
+      setError(errorMessage);
+      setProjects([]);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // ページ変更時にデータを取得
+  useEffect(() => {
+    fetchCurrentPage(currentPage);
+  }, [currentPage, sortBy, sortOrder]);
+
+  // 検索フィルタ
   const filteredProjects = projects.filter(project =>
     project.repository.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     project.path.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const pageCount = Math.ceil(filteredProjects.length / ITEMS_PER_PAGE);
-  const paginatedProjects = filteredProjects.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  // ページ数の計算
+  const pageCount = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const countries = Array.from(new Set(projects.map((p: any) => {
     // リポジトリ名から国を推測
@@ -255,7 +247,7 @@ const Index = () => {
         </div>
 
         {/* Loading and Error States */}
-        {isLoading && (
+        {isLoadingMore && (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-slate-600">データを読み込み中...</p>
@@ -270,51 +262,37 @@ const Index = () => {
 
         {/* Results */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {paginatedProjects.map((project, index) => (
-            <Card key={index} className="h-full flex flex-col hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="text-lg truncate">
-                  <a 
-                    href={project.repository.html_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="hover:text-blue-600 flex items-center"
-                  >
-                    {project.repository.full_name}
-                    <ExternalLink className="h-4 w-4 ml-1" />
-                  </a>
-                </CardTitle>
-                <CardDescription className="truncate">
-                  <a 
-                    href={project.html_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-slate-500 hover:text-blue-500 flex items-center"
-                  >
-                    {project.path}
-                  </a>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="mt-auto">
-                <Button 
-                  asChild 
-                  variant="outline" 
-                  className="w-full mt-4"
-                >
-                  <a 
-                    href={project.html_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                  >
-                    View publiccode.yml
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {filteredProjects.map((project, index) => {
+            // プロジェクトデータを整形
+            const projectData = {
+              ...project,
+              nameJa: project.repository.full_name.split('/').pop(),
+              nameEn: project.repository.full_name.split('/').pop(),
+              descriptionJa: project.description || '説明はありません',
+              descriptionEn: project.description || 'No description available',
+              categories: [],
+              organization: project.repository.owner?.login || 'Unknown',
+              developmentStatus: 'active',
+              country: 'Unknown',
+              url: project.html_url,
+              repositoryUrl: project.repository.html_url,
+              repository: {
+                ...project.repository,
+                full_name: project.repository.full_name,
+                stargazers_count: project.repository.stargazers_count || 0,
+                forks_count: project.repository.forks_count || 0,
+                html_url: project.repository.html_url
+              },
+              path: project.path,
+              html_url: project.html_url,
+              updated_at: project.updated_at || project.pushed_at || new Date().toISOString()
+            };
+
+            return <ProjectCard key={index} project={projectData} />;
+          })}
         </div>
 
-        {!isLoading && paginatedProjects.length === 0 && (
+        {!isLoadingMore && filteredProjects.length === 0 && (
           <div className="text-center py-12">
             <p className="text-slate-500">一致するプロジェクトが見つかりませんでした</p>
           </div>

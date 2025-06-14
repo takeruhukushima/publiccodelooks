@@ -22,7 +22,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const data = await response.json();
-    res.status(200).json(data);
+    res.status(200).json({
+      stargazers_count: data.stargazers_count,
+      forks_count: data.forks_count,
+    });
   } catch (error) {
     console.error('Error fetching repo details:', error);
     res.status(500).json({ message: 'Failed to fetch repository details' });
