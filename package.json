@@ -9,8 +9,8 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "vercel-build": "npm install && npx browserslist@latest --update-db && npm run build",
-    "postinstall": "npx browserslist@latest --update-db"
+    "vercel-build": "npm install && npx update-browserslist-db@latest && npm run build",
+    "postinstall": "npx update-browserslist-db@latest"
   },
   "engines": {
     "node": ">=16.0.0"
