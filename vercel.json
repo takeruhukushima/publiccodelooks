@@ -43,6 +43,16 @@
       }
     },
     {
+      "src": "/api/(.*)",
+      "dest": "https://api.github.com/$1",
+      "headers": {
+        "Authorization": "token ${VITE_GITHUB_ACCESS_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "publicode-search-app",
+        "X-GitHub-Api-Version": "2022-11-28"
+      }
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html",
       "headers": {
