@@ -88,7 +88,8 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       terserOptions: {
         compress: {
-          drop_console: true,
+          // Temporarily set to false for debugging VITE_GITHUB_ACCESS_TOKEN
+          drop_console: false,
           drop_debugger: true
         }
       },
@@ -152,4 +153,3 @@ export default defineConfig(({ mode }) => {
     envPrefix: 'VITE_',
   };
 });
-
