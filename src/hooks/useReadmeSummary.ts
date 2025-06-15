@@ -15,6 +15,9 @@ export const useReadmeSummary = (repoFullName?: string) => {
       setIsLoading(true);
       setError(null);
       
+      // Debugging: Log the GitHub token to console
+      console.log('VITE_GITHUB_ACCESS_TOKEN:', import.meta.env.VITE_GITHUB_ACCESS_TOKEN);
+
       try {
         // 1. まずデフォルトブランチを取得
         const repoResponse = await fetch(
