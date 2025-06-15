@@ -18,7 +18,15 @@ export const useReadmeSummary = (repoFullName?: string) => {
       try {
         // 1. まずデフォルトブランチを取得
         const repoResponse = await fetch(
-          `/api/repos/${repoFullName}`
+          `/api/repos/${repoFullName}`,
+          {
+            headers: {
+              'Authorization': `token ${import.meta.env.VITE_GITHUB_ACCESS_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'publicode-search-app',
+              'X-GitHub-Api-Version': '2022-11-28'
+            }
+          }
         );
         
         if (!repoResponse.ok) {
