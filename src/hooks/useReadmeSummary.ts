@@ -18,7 +18,7 @@ export const useReadmeSummary = (repoFullName?: string) => {
       try {
         // 1. まずデフォルトブランチを取得
         const repoResponse = await fetch(
-          `https://api.github.com/repos/${repoFullName}`
+          `/api/repos/${repoFullName}`
         );
         
         if (!repoResponse.ok) {
