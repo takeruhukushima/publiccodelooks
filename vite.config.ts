@@ -5,32 +5,23 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // 環境変数を読み込む
-  const env = loadEnv(mode, process.cwd(), '');
+  // 環境変数を直接 process.env から読み込む
+  // Vercel環境では loadEnv が期待通りに動作しない可能性があるため
+  const githubToken = process.env.VITE_GITHUB_ACCESS_TOKEN || process.env.VITE_PUBLIC_GITHUB_ACCESS_TOKEN;
   
-  // 環境変数が正しく読み込まれているか確認
-  const githubToken = env.VITE_GITHUB_ACCESS_TOKEN || env.VITE_PUBLIC_GITHUB_ACCESS_TOKEN;
-  
-  console.log('Environment variables loaded:', {
+  console.log('Environment variables loaded (via process.env):', {
     hasToken: !!githubToken,
     tokenPrefix: githubToken ? 
       `${githubToken.substring(0, 4)}...${githubToken.slice(-4)}` : 
       'No token found',
-    availableVars: Object.keys(env).filter(key => key.includes('GITHUB') || key.includes('VITE_'))
+    // availableVars: Object.keys(process.env).filter(key => key.includes('GITHUB') || key.includes('VITE_')) // 環境変数が多いのでコメントアウト
   });
   
   // トークンが設定されていない場合は警告を表示
   if (!githubToken) {
-    console.warn('GitHub token is not set. Please set VITE_GITHUB_ACCESS_TOKEN in your .env file.');
+    console.warn('GitHub token is not set. Please set VITE_GITHUB_ACCESS_TOKEN in your Vercel project settings.');
   }
   
-  // 環境変数をログに出力（デバッグ用）
-  console.log('Environment variables:', {
-    mode,
-    nodeEnv: process.env.NODE_ENV,
-    hasToken: !!env.VITE_GITHUB_ACCESS_TOKEN || !!env.VITE_PUBLIC_GITHUB_ACCESS_TOKEN,
-  });
-
   const isProduction = mode === 'production';
   
   return {
@@ -38,7 +29,7 @@ export default defineConfig(({ mode }) => {
     base: '/',
     // 環境変数の設定
     define: {
-      'import.meta.env.VITE_GITHUB_ACCESS_TOKEN': JSON.stringify(env.VITE_GITHUB_ACCESS_TOKEN || ''),
+      'import.meta.env.VITE_GITHUB_ACCESS_TOKEN': JSON.stringify(githubToken || ''),
       'import.meta.env.MODE': JSON.stringify(mode),
       'import.meta.env.PROD': isProduction,
       'import.meta.env.DEV': !isProduction,
