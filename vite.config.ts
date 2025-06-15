@@ -5,16 +5,17 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // 環境変数を直接 process.env から読み込む
-  // Vercel環境では loadEnv が期待通りに動作しない可能性があるため
-  const githubToken = process.env.VITE_GITHUB_ACCESS_TOKEN || process.env.VITE_PUBLIC_GITHUB_ACCESS_TOKEN;
+  // 環境変数を読み込む
+  const env = loadEnv(mode, process.cwd(), '');
+  const githubToken = env.VITE_GITHUB_ACCESS_TOKEN || env.VITE_PUBLIC_GITHUB_ACCESS_TOKEN;
   
-  console.log('Environment variables loaded (via process.env):', {
+  console.log('Environment variables loaded:', {
     hasToken: !!githubToken,
     tokenPrefix: githubToken ? 
       `${githubToken.substring(0, 4)}...${githubToken.slice(-4)}` : 
       'No token found',
-    // availableVars: Object.keys(process.env).filter(key => key.includes('GITHUB') || key.includes('VITE_')) // 環境変数が多いのでコメントアウト
+    mode: mode,
+    nodeEnv: process.env.NODE_ENV
   });
   
   // トークンが設定されていない場合は警告を表示
@@ -103,7 +104,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
           headers: {
-            'Authorization': githubToken ? `token ${githubToken}` : '',
+            'Authorization': githubToken ? `Bearer ${githubToken}` : '',
             'Accept': 'application/vnd.github.v3+json',
             'User-Agent': 'publicode-search-app',
             'X-GitHub-Api-Version': '2022-11-28'
