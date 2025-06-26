@@ -104,7 +104,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
           headers: {
-            'Authorization': githubToken ? `Bearer ${githubToken}` : '',
+            'Authorization': githubToken ? `token ${githubToken}` : '',
             'Accept': 'application/vnd.github.v3+json',
             'User-Agent': 'publicode-search-app',
             'X-GitHub-Api-Version': '2022-11-28'

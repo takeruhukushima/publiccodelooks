@@ -33,7 +33,12 @@ interface Project {
 }
 
 interface ProjectCardProps {
-  project: Project;
+  project: {
+    repository: Repository;
+    path: string;
+    html_url: string;
+    updated_at: string;
+  };
 }
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
@@ -44,36 +49,31 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
   
   console.log('ProjectCard - project:', JSON.stringify(project, null, 2));
   
-  // デバッグ用にデフォルト値を設定
   const { 
-    nameJa = project.nameEn || 'プロジェクト名なし',
-    descriptionJa = project.descriptionEn || '説明はありません',
-    categories = [],
-    repository = { full_name: '', stargazers_count: 0, forks_count: 0, html_url: '' },
+    repository,
     path = '',
-    html_url = '',
-    updated_at = new Date().toISOString(),
-    organization = '組織名なし',
-    developmentStatus = 'unknown',
-    country = '不明',
-    url = '#'
+    html_url = ''
   } = project;
-  
-  // 必須プロパティの検証
-  if (!repository || typeof repository !== 'object') {
-    console.error('ProjectCard: invalid repository object', { repository });
-    return <div className="text-red-500">リポジトリ情報が無効です</div>;
+
+  // 必須プロパティの検証（値がundefinedやnullの場合のみ警告）
+  const requiredRepoProps = ['descriptionJa', 'topics', 'stargazers_count', 'forks_count'];
+  const missingRepoProps = requiredRepoProps.filter(prop => repository[prop] === undefined || repository[prop] === null);
+  if (missingRepoProps.length > 0) {
+    console.warn('Missing required props in repository:', missingRepoProps);
   }
-  const stargazers_count = Number(repository?.stargazers_count) || 0;
-  const forks_count = Number(repository?.forks_count) || 0;
-  const { summary, isLoading } = useReadmeSummary(repository?.full_name || '');
+
+  // repositoryから全て取得（なければデフォルト値）
+  const nameJa = repository.full_name?.split('/')?.pop() || 'プロジェクト名なし';
+  const descriptionJa = repository.descriptionJa || repository.description || '';
+  const organization = repository.owner?.login || '組織名なし';
+  const categories = Array.isArray(repository.topics) ? repository.topics : [];
+  const developmentStatus = 'active';
+  const country = 'Unknown';
+  const updated_at = repository.updated_at || new Date().toISOString();
+  const stargazers_count = typeof repository.stargazers_count === 'number' ? repository.stargazers_count : 0;
+  const forks_count = typeof repository.forks_count === 'number' ? repository.forks_count : 0;
+  // const { summary, isLoading } = useReadmeSummary(repository?.full_name || '');
   
-  // デバッグ用に必須プロパティの存在を確認
-  const requiredProps = ['nameJa', 'descriptionJa', 'categories', 'repository'];
-  const missingProps = requiredProps.filter(prop => !(prop in project));
-  if (missingProps.length > 0) {
-    console.warn('Missing required props in project:', missingProps);
-  }
   const lastUpdated = new Date(updated_at).toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: 'long',
@@ -153,12 +153,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       
       <CardContent className="flex-1 flex flex-col">
         <p className="text-slate-600 text-sm mb-4 line-clamp-5 flex-1">
-          {isLoading ? (
-            <div className="flex items-center text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              要約を取得中...
-            </div>
-          ) : summary || descriptionJa}
+          {descriptionJa}
         </p>
         
         <div className="space-y-3">

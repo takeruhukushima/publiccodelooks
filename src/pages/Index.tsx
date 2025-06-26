@@ -30,37 +30,7 @@ const Index = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // リポジトリの詳細情報を取得する関数
-  const fetchRepoDetails = async (repoFullName: string) => {
-    try {
-      const repoUrl = new URL(`/api/repos/${repoFullName}`, window.location.origin);
-      const response = await fetch(repoUrl.toString(), {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'User-Agent': 'publicode-search-app',
-        },
-        cache: 'no-store' as RequestCache,
-      });
-
-      if (!response.ok) {
-        console.error(`Failed to fetch repo details for ${repoFullName}`);
-        return null;
-      }
-
-      const data = await response.json();
-      return {
-        stargazers_count: data.stargazers_count || 0,
-        forks_count: data.forks_count || 0,
-      };
-    } catch (error) {
-      console.error(`Error fetching repo details for ${repoFullName}:`, error);
-      return null;
-    }
-  };
+  
 
   // 現在のページのデータを取得
   const fetchCurrentPage = async (page: number) => {
@@ -75,52 +45,13 @@ const Index = () => {
         order: sortOrder,
       });
       apiUrl.search = params.toString();
-      const response = await fetch(apiUrl.toString(), {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          'User-Agent': 'publicode-search-app',
-        },
-        cache: 'no-store' as RequestCache,
-      });
+      const response = await fetch(apiUrl.toString());
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data?.message || `HTTP error! status: ${response.status}`);
       }
 
-      // リポジトリ詳細情報を並列で取得
-      const itemsWithDetails = await Promise.all(
-        data.items.map(async (item: any) => {
-          const repoDetails = await fetchRepoDetails(item.repository.full_name);
-          return {
-            ...item,
-            repository: {
-              ...item.repository,
-              stargazers_count: Number(repoDetails?.stargazers_count) || 0,
-              forks_count: Number(repoDetails?.forks_count) || 0,
-            },
-          };
-        })
-      );
-
-      // ソート処理を追加
-      const sortedItems = [...itemsWithDetails].sort((a, b) => {
-        if (sortBy === 'stars') {
-          return sortOrder === 'desc' 
-            ? b.repository.stargazers_count - a.repository.stargazers_count
-            : a.repository.stargazers_count - b.repository.stargazers_count;
-        } else if (sortBy === 'forks') {
-          return sortOrder === 'desc'
-            ? b.repository.forks_count - a.repository.forks_count
-            : a.repository.forks_count - b.repository.forks_count;
-        }
-        return 0;
-      });
-
-      setProjects(sortedItems);
+      setProjects(data.items);
       setTotalCount(data.total_count);
     } catch (err: any) {
       let errorMessage = 'データの取得中にエラーが発生しました';
@@ -276,34 +207,9 @@ const Index = () => {
 
         {/* Results */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project, index) => {
-            // プロジェクトデータを整形
-            const projectData = {
-              ...project,
-              nameJa: project.repository.full_name.split('/').pop(),
-              nameEn: project.repository.full_name.split('/').pop(),
-              descriptionJa: project.description || '説明はありません',
-              descriptionEn: project.description || 'No description available',
-              categories: [],
-              organization: project.repository.owner?.login || 'Unknown',
-              developmentStatus: 'active',
-              country: 'Unknown',
-              url: project.html_url,
-              repositoryUrl: project.repository.html_url,
-              repository: {
-                ...project.repository,
-                full_name: project.repository.full_name,
-                stargazers_count: Number(project.repository.stargazers_count) || 0,
-                forks_count: Number(project.repository.forks_count) || 0,
-                html_url: project.repository.html_url
-              },
-              path: project.path,
-              html_url: project.html_url,
-              updated_at: project.updated_at || project.pushed_at || new Date().toISOString()
-            };
-
-            return <ProjectCard key={index} project={projectData} />;
-          })}
+          {filteredProjects.map((project, index) => (
+            <ProjectCard key={index} project={project} />
+          ))}
         </div>
 
         {!isLoadingMore && filteredProjects.length === 0 && (
